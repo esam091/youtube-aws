@@ -46,9 +46,6 @@ resource "aws_lambda_function" "process_raw_video" {
   }
 }
 
-# Get the MediaConvert endpoint
-data "aws_mediaconvert_endpoint" "current" {}
-
 # IAM role for the Lambda function
 resource "aws_iam_role" "lambda_role" {
   name = "process_raw_video_lambda_role"
