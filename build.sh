@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the name of the Lambda function file
-LAMBDA_FILE="process_video.py"
+LAMBDA_FILE="lambda_function.py"
 
 # Set the name of the zip file
 ZIP_FILE="lambda_function.zip"

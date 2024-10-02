@@ -1,16 +1,17 @@
 # Configure the AWS provider
 provider "aws" {
-  region = "us-west-2"  # Change this to your preferred region
+  profile = var.aws_profile
+  region  = var.aws_region
 }
 
 # S3 bucket for raw videos
 resource "aws_s3_bucket" "raw_videos" {
-  bucket = "raw-videos"
+  bucket = "ytaws-raw-videos"
 }
 
 # S3 bucket for processed videos
 resource "aws_s3_bucket" "processed_videos" {
-  bucket = "processed-videos"
+  bucket = "ytaws-processed-videos"
 }
 
 # SQS queue for raw video events
@@ -22,6 +23,28 @@ resource "aws_sqs_queue" "raw_video_queue" {
     deadLetterTargetArn = aws_sqs_queue.raw_video_dlq.arn
     maxReceiveCount     = 3
   })
+
+  # Add policy to allow S3 to send messages to this queue
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "s3.amazonaws.com"
+        }
+        Action = [
+          "sqs:SendMessage"
+        ]
+        Resource = "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:raw-video-queue"
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_s3_bucket.raw_videos.arn
+          }
+        }
+      }
+    ]
+  })
 }
 
 # Dead Letter Queue (DLQ) for failed events
@@ -31,16 +54,17 @@ resource "aws_sqs_queue" "raw_video_dlq" {
 
 # Lambda function to process raw videos
 resource "aws_lambda_function" "process_raw_video" {
-  filename      = "lambda_function.zip"  # You need to create this ZIP file with your Python code
-  function_name = "process-raw-video"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "lambda_function.handler"
-  runtime       = "python3.12"
+  filename         = "lambda_function.zip"
+  function_name    = "process-raw-video"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_function.handler"
+  runtime          = "python3.12"
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
   environment {
     variables = {
-      S3_OUTPUT_URL = aws_s3_bucket.processed_videos.bucket_regional_domain_name
-      SQS_QUEUE_URL = aws_sqs_queue.raw_video_queue.url
+      S3_OUTPUT_URL    = aws_s3_bucket.processed_videos.bucket_regional_domain_name
+      SQS_QUEUE_URL    = aws_sqs_queue.raw_video_queue.url
       MEDIACONVERT_ROLE = aws_iam_role.mediaconvert_role.arn
     }
   }
@@ -82,7 +106,7 @@ resource "aws_iam_role" "mediaconvert_role" {
   })
 }
 
-# IAM policy for Lambda to access S3 and CloudWatch Logs
+# IAM policy for Lambda to access S3, CloudWatch Logs, and SQS
 resource "aws_iam_role_policy" "lambda_policy" {
   name = "process_raw_video_lambda_policy"
   role = aws_iam_role.lambda_role.id
@@ -144,6 +168,15 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "iam:PassRole"
         ]
         Resource = aws_iam_role.mediaconvert_role.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ]
+        Resource = aws_sqs_queue.raw_video_queue.arn
       }
     ]
   })
@@ -197,4 +230,25 @@ resource "aws_lambda_event_source_mapping" "sqs_lambda_trigger" {
   event_source_arn = aws_sqs_queue.raw_video_queue.arn
   function_name    = aws_lambda_function.process_raw_video.arn
   batch_size       = 1  # Process one message at a time
+}
+
+variable "aws_profile" {
+  description = "AWS profile to use"
+  type        = string
+  default     = "default"  # You can set a default profile here
+}
+
+variable "aws_region" {
+  description = "AWS region to deploy to"
+  type        = string
+}
+
+# Get current AWS account ID
+data "aws_caller_identity" "current" {}
+
+# Lambda function code from zip file
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_file = "lambda_function.py"
+  output_path = "lambda_function.zip"
 }
