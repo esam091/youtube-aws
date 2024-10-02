@@ -22,7 +22,7 @@ MEDIACONVERT_ENDPOINT = get_mediaconvert_endpoint()
 # Re-initialize MediaConvert client with the correct endpoint
 mediaconvert_client = boto3.client('mediaconvert', endpoint_url=MEDIACONVERT_ENDPOINT)
 
-def lambda_handler(event, context):
+def handler(event, context):
     try:
         # Process SQS messages
         for record in event['Records']:

@@ -63,7 +63,7 @@ resource "aws_lambda_function" "process_raw_video" {
 
   environment {
     variables = {
-      S3_OUTPUT_URL    = aws_s3_bucket.processed_videos.bucket_regional_domain_name
+      S3_OUTPUT_URL    = "s3://${aws_s3_bucket.processed_videos.id}"
       SQS_QUEUE_URL    = aws_sqs_queue.raw_video_queue.url
       MEDIACONVERT_ROLE = aws_iam_role.mediaconvert_role.arn
     }

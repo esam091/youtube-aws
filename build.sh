@@ -26,7 +26,7 @@ fi
 # Run Terraform
 echo "Running Terraform..."
 terraform init
-terraform apply
+terraform apply -var="aws_profile=toptal" -var="aws_region=ap-southeast-1"
 
 # Check if Terraform apply was successful
 if [ $? -eq 0 ]; then
