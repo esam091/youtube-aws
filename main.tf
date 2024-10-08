@@ -1,3 +1,10 @@
+# Add this at the beginning of the file
+variable "environment" {
+  description = "Deployment environment (dev or prod)"
+  type        = string
+  default     = "dev"
+}
+
 # Configure the AWS provider
 provider "aws" {
   profile = var.aws_profile
@@ -6,7 +13,7 @@ provider "aws" {
 
 # S3 bucket for raw videos
 resource "aws_s3_bucket" "raw_videos" {
-  bucket = "ytaws-raw-videos"
+  bucket = "ytaws-raw-videos-3892-${var.environment}"
 }
 
 # CORS configuration for raw videos bucket
@@ -29,12 +36,12 @@ resource "aws_s3_bucket_cors_configuration" "raw_videos_cors" {
 
 # S3 bucket for processed videos
 resource "aws_s3_bucket" "processed_videos" {
-  bucket = "ytaws-processed-videos"
+  bucket = "ytaws-processed-videos-3892-${var.environment}"
 }
 
 # SQS queue for raw video events
 resource "aws_sqs_queue" "raw_video_queue" {
-  name = "raw-video-queue"
+  name = "raw-video-queue-${var.environment}"
 
   # Configure the DLQ
   redrive_policy = jsonencode({
@@ -54,7 +61,7 @@ resource "aws_sqs_queue" "raw_video_queue" {
         Action = [
           "sqs:SendMessage"
         ]
-        Resource = "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:raw-video-queue"
+        Resource = "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:raw-video-queue-${var.environment}"
         Condition = {
           ArnEquals = {
             "aws:SourceArn" = aws_s3_bucket.raw_videos.arn
@@ -67,13 +74,13 @@ resource "aws_sqs_queue" "raw_video_queue" {
 
 # Dead Letter Queue (DLQ) for failed events
 resource "aws_sqs_queue" "raw_video_dlq" {
-  name = "raw-video-queue-dlq"
+  name = "raw-video-queue-dlq-${var.environment}"
 }
 
 # Lambda function to process raw videos
 resource "aws_lambda_function" "process_raw_video" {
   filename         = "lambda_function.zip"
-  function_name    = "process-raw-video"
+  function_name    = "process-raw-video-${var.environment}"
   role             = aws_iam_role.lambda_role.arn
   handler          = "lambda_function.handler"
   runtime          = "python3.12"
@@ -90,7 +97,7 @@ resource "aws_lambda_function" "process_raw_video" {
 
 # IAM role for the Lambda function
 resource "aws_iam_role" "lambda_role" {
-  name = "process_raw_video_lambda_role"
+  name = "process_raw_video_lambda_role_${var.environment}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -108,7 +115,7 @@ resource "aws_iam_role" "lambda_role" {
 
 # IAM role for MediaConvert
 resource "aws_iam_role" "mediaconvert_role" {
-  name = "mediaconvert_processing_role"
+  name = "mediaconvert_processing_role_${var.environment}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -126,7 +133,7 @@ resource "aws_iam_role" "mediaconvert_role" {
 
 # IAM policy for Lambda to access S3, CloudWatch Logs, and SQS
 resource "aws_iam_role_policy" "lambda_policy" {
-  name = "process_raw_video_lambda_policy"
+  name = "process_raw_video_lambda_policy_${var.environment}"
   role = aws_iam_role.lambda_role.id
 
   policy = jsonencode({
@@ -202,7 +209,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
 
 # IAM policy for MediaConvert to access S3
 resource "aws_iam_role_policy" "mediaconvert_policy" {
-  name = "mediaconvert_s3_access_policy"
+  name = "mediaconvert_s3_access_policy_${var.environment}"
   role = aws_iam_role.mediaconvert_role.id
 
   policy = jsonencode({
