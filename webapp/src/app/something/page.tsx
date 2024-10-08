@@ -2,10 +2,10 @@ import { DynamoDBClient, PutItemCommand } from '@aws-sdk/client-dynamodb'
 
 const client = new DynamoDBClient({
   region: process.env.AWS_REGION!,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
+  // credentials: {
+  //   accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+  //   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  // },
 })
 
 async function myAction() {
@@ -14,8 +14,8 @@ async function myAction() {
   await client.send(new PutItemCommand({
     TableName: 'ytaws-videos-test',
     Item: {
-      id: { S: '1' },
-      title: { S: 'Sample Video' },
+      id: { S: new Date().toISOString() },
+      title: { S: 'Sample Video '+ Math.random() },
       description: { S: 'This is a sample video entry' },
       createdAt: { S: new Date().toISOString() },
       uploadDate: { S: new Date().toISOString() },

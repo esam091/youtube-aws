@@ -7,7 +7,6 @@ variable "environment" {
 
 # Configure the AWS provider
 provider "aws" {
-  profile = var.aws_profile
   region  = var.aws_region
 }
 
@@ -352,4 +351,151 @@ output "cognito_user_pool_id" {
 
 output "cognito_user_pool_client_id" {
   value = aws_cognito_user_pool_client.client.id
+}
+
+# Elastic Beanstalk application
+resource "aws_elastic_beanstalk_application" "ytaws_app" {
+  name        = "ytaws-app-${var.environment}"
+  description = "YT AWS Application - ${title(var.environment)}"
+}
+
+# Elastic Beanstalk environment
+resource "aws_elastic_beanstalk_environment" "ytaws_app_env" {
+  name                = "ytaws-app-${var.environment}"
+  application         = aws_elastic_beanstalk_application.ytaws_app.name
+  solution_stack_name = "64bit Amazon Linux 2023 v6.2.1 running Node.js 20"
+
+  setting {
+    namespace = "aws:autoscaling:launchconfiguration"
+    name      = "IamInstanceProfile"
+    value     = aws_iam_instance_profile.eb_instance_profile.name
+  }
+
+  setting {
+    namespace = "aws:autoscaling:launchconfiguration"
+    name      = "InstanceType"
+    value     = "t2.micro"
+  }
+
+  setting {
+    namespace = "aws:autoscaling:asg"
+    name      = "MinSize"
+    value     = "1"
+  }
+
+  setting {
+    namespace = "aws:autoscaling:asg"
+    name      = "MaxSize"
+    value     = "1"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "S3_BUCKET_NAME"
+    value     = aws_s3_bucket.raw_videos.id
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "NEXT_PUBLIC_AWS_USER_POOL_ID"
+    value     = aws_cognito_user_pool.main.id
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "NEXT_PUBLIC_AWS_USER_POOL_CLIENT_ID"
+    value     = aws_cognito_user_pool_client.client.id
+  }
+
+  # Add this new setting for AWS_REGION
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "AWS_REGION"
+    value     = var.aws_region
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:cloudwatch:logs"
+    name      = "StreamLogs"
+    value     = "true"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:cloudwatch:logs"
+    name      = "DeleteOnTerminate"
+    value     = "false"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:cloudwatch:logs"
+    name      = "RetentionInDays"
+    value     = "7"
+  }
+}
+
+# IAM role for Elastic Beanstalk instances
+resource "aws_iam_role" "eb_instance_role" {
+  name = "ytaws-eb-instance-role-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# IAM instance profile for Elastic Beanstalk
+resource "aws_iam_instance_profile" "eb_instance_profile" {
+  name = "ytaws-eb-instance-profile-${var.environment}"
+  role = aws_iam_role.eb_instance_role.name
+}
+
+# IAM policy for S3 access
+resource "aws_iam_role_policy" "s3_access" {
+  name = "ytaws-s3-access-${var.environment}"
+  role = aws_iam_role.eb_instance_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "s3:PutObject"
+        ]
+        Effect = "Allow"
+        Resource = [
+          "${aws_s3_bucket.raw_videos.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# IAM policy for CloudWatch Logs access
+resource "aws_iam_role_policy" "cloudwatch_logs_access" {
+  name = "ytaws-cloudwatch-logs-access-${var.environment}"
+  role = aws_iam_role.eb_instance_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ],
+        Resource = "arn:aws:logs:*:*:*"
+      }
+    ]
+  })
 }
