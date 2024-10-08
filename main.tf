@@ -9,6 +9,24 @@ resource "aws_s3_bucket" "raw_videos" {
   bucket = "ytaws-raw-videos"
 }
 
+# CORS configuration for raw videos bucket
+resource "aws_s3_bucket_cors_configuration" "raw_videos_cors" {
+  bucket = aws_s3_bucket.raw_videos.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["PUT"]
+    allowed_origins = [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "https://localhost:3000",
+      "https://localhost:3001"
+    ]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
+
 # S3 bucket for processed videos
 resource "aws_s3_bucket" "processed_videos" {
   bucket = "ytaws-processed-videos"
