@@ -21,13 +21,11 @@ resource "aws_s3_bucket_cors_configuration" "raw_videos_cors" {
 
   cors_rule {
     allowed_headers = ["*"]
-    allowed_methods = ["PUT"]
-    allowed_origins = [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "https://localhost:3000",
-      "https://localhost:3001"
-    ]
+    allowed_methods = ["POST"]
+    allowed_origins = concat(
+      ["http://${aws_elastic_beanstalk_environment.ytaws_app_env.cname}"],
+      var.environment == "dev" ? ["http://localhost:3000"] : []
+    )
     expose_headers  = ["ETag"]
     max_age_seconds = 3000
   }

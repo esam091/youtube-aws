@@ -1,27 +1,28 @@
 "use server"
 
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { S3Client } from "@aws-sdk/client-s3";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
+
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
+const EXPIRATION_TIME = 60 * 3; // 3 minutes in seconds
 
 export async function createSignedUrl(fileName: string, fileType: string) {
-
   const s3Client = new S3Client({
     region: process.env.AWS_REGION,
-    // credentials: {
-    //   accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    //   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-    // },
-  });
-
-  const command = new PutObjectCommand({
-    Bucket: process.env.S3_BUCKET_NAME,
-    Key: fileName,
-    ContentType: fileType,
   });
 
   try {
-    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // URL expires in 1 hour
-    return { url: signedUrl, fields: {} };
+    const { url, fields } = await createPresignedPost(s3Client, {
+      Bucket: process.env.S3_BUCKET_NAME!,
+      Key: fileName,
+      Conditions: [
+        ["content-length-range", 0, MAX_FILE_SIZE],
+        // ["starts-with", "$Content-Type", fileType],
+      ],
+      Expires: EXPIRATION_TIME, // URL expires in 3 minutes
+    });
+
+    return { url, fields };
   } catch (error) {
     console.error("Error creating signed URL:", error);
     throw new Error("Failed to create signed URL");

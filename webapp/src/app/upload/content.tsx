@@ -4,35 +4,45 @@ import { useState } from 'react'
 import axios from 'axios'
 import { createSignedUrl } from './upload-utils'
 
+const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB in bytes
+
 export default function Page() {
   const [file, setFile] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setFile(e.target.files[0])
+      setError(null)
     }
   }
 
   const handleUpload = async () => {
     if (!file) {
-      alert('Please select a file first!')
+      setError('Please select a file first!')
       return
     }
 
     setUploading(true)
     setUploadProgress(0)
+    setError(null)
 
     try {
-      // Get the signed URL
-      const { url } = await createSignedUrl(file.name, file.type)
+      // Get the signed URL and fields
+      const { url, fields } = await createSignedUrl(file.name, file.type)
+
+      // Create form data
+      const formData = new FormData()
+      Object.entries(fields).forEach(([key, value]) => {
+        formData.append(key, value as string)
+      })
+      formData.append('file', file)
 
       // Upload the file using axios
-      await axios.put(url, file, {
-        headers: {
-          'Content-Type': file.type,
-        },
+      await axios.post(url, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total ?? file.size))
           setUploadProgress(percentCompleted)
@@ -42,7 +52,7 @@ export default function Page() {
       alert('File uploaded successfully!')
     } catch (error) {
       console.error('Error uploading file:', error)
-      alert('Failed to upload file. Please try again.')
+      setError('Failed to upload file. Please try again.')
     } finally {
       setUploading(false)
     }
@@ -59,6 +69,7 @@ export default function Page() {
           disabled={uploading}
         />
       </div>
+      {error && <p className="text-red-500 mb-4">{error}</p>}
       <button
         onClick={handleUpload}
         className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-blue-300"

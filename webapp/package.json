@@ -13,6 +13,7 @@
     "@aws-amplify/ui-react": "^6.5.2",
     "@aws-sdk/client-dynamodb": "^3.665.0",
     "@aws-sdk/client-s3": "^3.x.x",
+    "@aws-sdk/s3-presigned-post": "^3.667.0",
     "@aws-sdk/s3-request-presigner": "^3.666.0",
     "aws-amplify": "^6.6.4",
     "axios": "^1.7.7",
