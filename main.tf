@@ -277,3 +277,79 @@ data "archive_file" "lambda_zip" {
   source_file = "lambda_function.py"
   output_path = "lambda_function.zip"
 }
+
+# Cognito User Pool
+resource "aws_cognito_user_pool" "main" {
+  name = "ytaws-user-pool-${var.environment}"
+
+  username_attributes      = ["email"]
+  auto_verified_attributes = ["email"]
+
+  password_policy {
+    minimum_length    = var.environment == "dev" ? 6 : 8
+    require_lowercase = var.environment == "dev" ? false : true
+    require_numbers   = var.environment == "dev" ? false : true
+    require_symbols   = var.environment == "dev" ? false : true
+    require_uppercase = var.environment == "dev" ? false : true
+  }
+
+  verification_message_template {
+    default_email_option = "CONFIRM_WITH_CODE"
+  }
+
+  email_configuration {
+    email_sending_account = "COGNITO_DEFAULT"
+  }
+
+  account_recovery_setting {
+    recovery_mechanism {
+      name     = "verified_email"
+      priority = 1
+    }
+  }
+
+  admin_create_user_config {
+    allow_admin_create_user_only = false
+  }
+
+  user_attribute_update_settings {
+    attributes_require_verification_before_update = ["email"]
+  }
+
+  # Keep original attribute value active when an update is pending
+  # This is the default behavior, so we don't need to specify anything for this
+
+  schema {
+    attribute_data_type      = "String"
+    developer_only_attribute = false
+    mutable                  = true
+    name                     = "email"
+    required                 = true
+
+    string_attribute_constraints {
+      min_length = 1
+      max_length = 256
+    }
+  }
+}
+
+# Cognito User Pool Client
+resource "aws_cognito_user_pool_client" "client" {
+  name         = "next-client"
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  generate_secret = false
+  explicit_auth_flows = [
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH"
+  ]
+}
+
+# Output the User Pool ID and Client ID
+output "cognito_user_pool_id" {
+  value = aws_cognito_user_pool.main.id
+}
+
+output "cognito_user_pool_client_id" {
+  value = aws_cognito_user_pool_client.client.id
+}
