@@ -12,7 +12,7 @@ Amplify.configure({
   },
   Storage: {
     S3: {
-      region: 'ap-southeast-1',
+      region: process.env.NEXT_PUBLIC_AWS_REGION!,
     }
   }
 }, {ssr: true});

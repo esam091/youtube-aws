@@ -80,7 +80,7 @@ resource "aws_lambda_function" "process_raw_video" {
   function_name    = "process-raw-video-${var.environment}"
   role             = aws_iam_role.lambda_role.arn
   handler          = "lambda_function.handler"
-  runtime          = "python3.12"
+  runtime          = "python3.10"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
   environment {
@@ -536,3 +536,29 @@ resource "aws_iam_role_policy" "dynamodb_access" {
     ]
   })
 }
+
+# resource "local_file" "dotenv" {
+#   filename = "${path.module}/webapp/.env"
+#   content  = <<-EOT
+#     NEXT_PUBLIC_AWS_REGION=${var.aws_region}
+#     NEXT_PUBLIC_AWS_USER_POOL_ID=${aws_cognito_user_pool.main.id}
+#     NEXT_PUBLIC_AWS_USER_POOL_CLIENT_ID=${aws_cognito_user_pool_client.client.id}
+#     S3_BUCKET_NAME=${aws_s3_bucket.raw_videos.id}
+#     VIDEOS_TABLE=${aws_dynamodb_table.videos.name}
+#   EOT
+# }
+
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.1"
+    }
+  }
+}
+
+# No need to configure the local provider
