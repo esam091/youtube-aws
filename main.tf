@@ -342,15 +342,6 @@ resource "aws_cognito_user_pool_client" "client" {
   ]
 }
 
-# Output the User Pool ID and Client ID
-output "cognito_user_pool_id" {
-  value = aws_cognito_user_pool.main.id
-}
-
-output "cognito_user_pool_client_id" {
-  value = aws_cognito_user_pool_client.client.id
-}
-
 # Elastic Beanstalk application
 resource "aws_elastic_beanstalk_application" "ytaws_app" {
   name        = "ytaws-app-${var.environment}"
@@ -405,11 +396,17 @@ resource "aws_elastic_beanstalk_environment" "ytaws_app_env" {
     value     = aws_cognito_user_pool_client.client.id
   }
 
-  # Add this new setting for AWS_REGION
   setting {
     namespace = "aws:elasticbeanstalk:application:environment"
     name      = "AWS_REGION"
     value     = var.aws_region
+  }
+
+  # Add this new setting for VIDEOS_TABLE
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "VIDEOS_TABLE"
+    value     = aws_dynamodb_table.videos.name
   }
 
   setting {
@@ -493,6 +490,48 @@ resource "aws_iam_role_policy" "cloudwatch_logs_access" {
           "logs:DescribeLogStreams"
         ],
         Resource = "arn:aws:logs:*:*:*"
+      }
+    ]
+  })
+}
+
+# DynamoDB table for videos
+resource "aws_dynamodb_table" "videos" {
+  name           = "ytaws-videos-${var.environment}"
+  billing_mode   = "PROVISIONED"
+  read_capacity  = 1
+  write_capacity = 1
+  hash_key       = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
+# IAM policy for DynamoDB access
+resource "aws_iam_role_policy" "dynamodb_access" {
+  name = "ytaws-dynamodb-access-${var.environment}"
+  role = aws_iam_role.eb_instance_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Scan",
+          "dynamodb:Query"
+        ]
+        Resource = aws_dynamodb_table.videos.arn
       }
     ]
   })
