@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "node server.js",
-    "lint": "next lint"
+    "lint": "next lint",
+    "zip": "next build && cp -r .next/static .next/standalone/.next/ && rm .next/standalone/.env && (cd .next/standalone && zip -r -J ../../../webapp.zip .)"
   },
   "dependencies": {
     "@aws-amplify/adapter-nextjs": "^1.2.21",

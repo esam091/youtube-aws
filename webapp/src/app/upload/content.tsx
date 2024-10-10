@@ -4,8 +4,6 @@ import { useState } from 'react'
 import axios from 'axios'
 import { createSignedUrl } from './upload-utils'
 
-const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB in bytes
-
 export default function Page() {
   const [file, setFile] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -31,7 +29,7 @@ export default function Page() {
 
     try {
       // Get the signed URL and fields
-      const { url, fields } = await createSignedUrl(file.name, file.type)
+      const { url, fields } = await createSignedUrl(file.name)
 
       // Create form data
       const formData = new FormData()

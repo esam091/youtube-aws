@@ -96,3 +96,9 @@ terraform.rc
 
 lambda_function.zip
 webapp/.env
+webapp.zip
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
