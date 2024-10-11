@@ -2,6 +2,7 @@
 import { Amplify } from "aws-amplify";
 // import { Authenticator } from "@aws-amplify/ui-react";
 import '@aws-amplify/ui-react/styles.css';
+import './globals.css';
 
 Amplify.configure({
   Auth: {
@@ -24,17 +25,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
+      <body className="h-screen">
         {children}
-        {/* <Authenticator>
-          {({ user, signOut }) => (
-            <>
-              <div>user id: {user?.userId}</div>
-              <button onClick={signOut}>Sign out</button>
-              {children}
-            </>
-          )}
-        </Authenticator> */}
       </body>
     </html>
   );

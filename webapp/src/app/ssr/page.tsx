@@ -1,12 +1,8 @@
 import {cookies} from 'next/headers'
-import { runWithAmplifyServerContext } from "@/amplifyServer";
-import { getCurrentUser } from 'aws-amplify/auth/server';
+import { currentActiveUser } from '@/server/utils';
 
-export default async function Page() {
-  const currentUser = await runWithAmplifyServerContext({
-    nextServerContext: {cookies},
-    operation: getCurrentUser
-  })
+export default async function ServerSidePage() {
+  const currentUser = await currentActiveUser();
 
   if (currentUser) {
     return <div>user id: {currentUser.userId}</div>

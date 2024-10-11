@@ -279,8 +279,38 @@ data "archive_file" "lambda_zip" {
 resource "aws_cognito_user_pool" "main" {
   name = "ytaws-user-pool-${var.environment}"
 
-  username_attributes      = ["email"]
   auto_verified_attributes = ["email"]
+  
+  # Allow sign-in with email and preferred_username
+  alias_attributes         = ["email", "preferred_username"]
+  
+  username_configuration {
+    case_sensitive = false
+  }
+
+  schema {
+    name                = "email"
+    attribute_data_type = "String"
+    required            = true
+    mutable             = true
+
+    string_attribute_constraints {
+      min_length = 1
+      max_length = 256
+    }
+  }
+
+  schema {
+    name                = "preferred_username"
+    attribute_data_type = "String"
+    required            = false
+    mutable             = true
+
+    string_attribute_constraints {
+      min_length = 1
+      max_length = 256
+    }
+  }
 
   password_policy {
     minimum_length    = var.environment == "dev" ? 6 : 8
@@ -315,19 +345,6 @@ resource "aws_cognito_user_pool" "main" {
 
   # Keep original attribute value active when an update is pending
   # This is the default behavior, so we don't need to specify anything for this
-
-  schema {
-    attribute_data_type      = "String"
-    developer_only_attribute = false
-    mutable                  = true
-    name                     = "email"
-    required                 = true
-
-    string_attribute_constraints {
-      min_length = 1
-      max_length = 256
-    }
-  }
 }
 
 # Cognito User Pool Client
@@ -338,8 +355,13 @@ resource "aws_cognito_user_pool_client" "client" {
   generate_secret = false
   explicit_auth_flows = [
     "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_USER_SRP_AUTH",
     "ALLOW_REFRESH_TOKEN_AUTH"
   ]
+
+  # Enable all sign-in options
+  supported_identity_providers = ["COGNITO"]
+  prevent_user_existence_errors = "ENABLED"
 }
 
 # Elastic Beanstalk application
