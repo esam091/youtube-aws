@@ -1,9 +1,8 @@
-"use client";
-import { Amplify, } from "aws-amplify";
-// import { Authenticator } from "@aws-amplify/ui-react";
+import { Amplify } from "aws-amplify";
 import '@aws-amplify/ui-react/styles.css';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import NavBar from "@/components/NavBar";
 
 Amplify.configure({
   Auth: {
@@ -19,15 +18,18 @@ Amplify.configure({
   }
 }, {ssr: true});
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
     <html lang="en">
-      <body className="h-screen">
-        {children}
+      <body className="h-screen flex flex-col">
+        <NavBar />
+        <main className="flex-grow">
+          {children}
+        </main>
         <Toaster />
       </body>
     </html>
