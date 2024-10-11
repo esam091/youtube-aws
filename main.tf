@@ -584,3 +584,146 @@ terraform {
 }
 
 # No need to configure the local provider
+
+# New SQS queue for MediaConvert job status changes
+resource "aws_sqs_queue" "mediaconvert_job_queue" {
+  name = "ytaws-mediaconvert-job-${var.environment}"
+
+  # Configure the DLQ
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.mediaconvert_job_dlq.arn
+    maxReceiveCount     = 3
+  })
+}
+
+# Dead Letter Queue (DLQ) for failed MediaConvert job events
+resource "aws_sqs_queue" "mediaconvert_job_dlq" {
+  name = "ytaws-mediaconvert-job-dlq-${var.environment}"
+}
+
+# Lambda function to process MediaConvert job status changes
+resource "aws_lambda_function" "process_mediaconvert_job" {
+  filename         = "lambda_mediaconvert_job.zip"
+  function_name    = "process-mediaconvert-job-${var.environment}"
+  role             = aws_iam_role.lambda_mediaconvert_role.arn
+  handler          = "lambda_mediaconvert_job.handler"
+  runtime          = "python3.12"
+  source_code_hash = data.archive_file.lambda_mediaconvert_zip.output_base64sha256
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE = aws_dynamodb_table.videos.name
+    }
+  }
+}
+
+# IAM role for the MediaConvert job Lambda function
+resource "aws_iam_role" "lambda_mediaconvert_role" {
+  name = "process_mediaconvert_job_lambda_role_${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# IAM policy for Lambda to access SQS, CloudWatch Logs, and DynamoDB
+resource "aws_iam_role_policy" "lambda_mediaconvert_policy" {
+  name = "process_mediaconvert_job_lambda_policy_${var.environment}"
+  role = aws_iam_role.lambda_mediaconvert_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ]
+        Resource = aws_sqs_queue.mediaconvert_job_queue.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:UpdateItem"
+        ]
+        Resource = aws_dynamodb_table.videos.arn
+      }
+    ]
+  })
+}
+
+# Lambda event source mapping (SQS to Lambda trigger)
+resource "aws_lambda_event_source_mapping" "sqs_mediaconvert_lambda_trigger" {
+  event_source_arn = aws_sqs_queue.mediaconvert_job_queue.arn
+  function_name    = aws_lambda_function.process_mediaconvert_job.arn
+  batch_size       = 1  # Process one message at a time
+}
+
+# Lambda function code from zip file
+data "archive_file" "lambda_mediaconvert_zip" {
+  type        = "zip"
+  source_file = "lambda_mediaconvert_job.py"
+  output_path = "lambda_mediaconvert_job.zip"
+}
+
+# CloudWatch Event Rule to capture MediaConvert job status changes
+resource "aws_cloudwatch_event_rule" "mediaconvert_job_state_change" {
+  name        = "capture-mediaconvert-job-state-change-${var.environment}"
+  description = "Capture MediaConvert job state changes"
+
+  event_pattern = jsonencode({
+    source      = ["aws.mediaconvert"]
+    detail-type = ["MediaConvert Job State Change"]
+  })
+}
+
+# CloudWatch Event Target to send events to SQS
+resource "aws_cloudwatch_event_target" "send_mediaconvert_job_to_sqs" {
+  rule      = aws_cloudwatch_event_rule.mediaconvert_job_state_change.name
+  target_id = "SendToSQS"
+  arn       = aws_sqs_queue.mediaconvert_job_queue.arn
+}
+
+# SQS queue policy to allow CloudWatch Events to send messages
+resource "aws_sqs_queue_policy" "mediaconvert_job_queue_policy" {
+  queue_url = aws_sqs_queue.mediaconvert_job_queue.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "events.amazonaws.com"
+        }
+        Action   = "sqs:SendMessage"
+        Resource = aws_sqs_queue.mediaconvert_job_queue.arn
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_cloudwatch_event_rule.mediaconvert_job_state_change.arn
+          }
+        }
+      }
+    ]
+  })
+}
