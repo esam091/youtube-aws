@@ -613,6 +613,7 @@ resource "aws_lambda_function" "process_mediaconvert_job" {
   environment {
     variables = {
       DYNAMODB_TABLE = aws_dynamodb_table.videos.name
+      SQS_QUEUE_URL  = aws_sqs_queue.mediaconvert_job_queue.url  
     }
   }
 }
