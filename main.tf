@@ -613,7 +613,8 @@ resource "aws_lambda_function" "process_mediaconvert_job" {
   environment {
     variables = {
       DYNAMODB_TABLE = aws_dynamodb_table.videos.name
-      SQS_QUEUE_URL  = aws_sqs_queue.mediaconvert_job_queue.url  
+      SQS_QUEUE_URL  = aws_sqs_queue.mediaconvert_job_queue.url
+      RAW_VIDEOS_BUCKET = aws_s3_bucket.raw_videos.id  
     }
   }
 }
@@ -636,7 +637,7 @@ resource "aws_iam_role" "lambda_mediaconvert_role" {
   })
 }
 
-# IAM policy for Lambda to access SQS, CloudWatch Logs, and DynamoDB
+# IAM policy for Lambda to access SQS, CloudWatch Logs, DynamoDB, and S3
 resource "aws_iam_role_policy" "lambda_mediaconvert_policy" {
   name = "process_mediaconvert_job_lambda_policy_${var.environment}"
   role = aws_iam_role.lambda_mediaconvert_role.id
@@ -668,6 +669,13 @@ resource "aws_iam_role_policy" "lambda_mediaconvert_policy" {
           "dynamodb:UpdateItem"
         ]
         Resource = aws_dynamodb_table.videos.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:DeleteObject"
+        ]
+        Resource = "${aws_s3_bucket.raw_videos.arn}/*"
       }
     ]
   })
@@ -690,11 +698,17 @@ data "archive_file" "lambda_mediaconvert_zip" {
 # CloudWatch Event Rule to capture MediaConvert job status changes
 resource "aws_cloudwatch_event_rule" "mediaconvert_job_state_change" {
   name        = "capture-mediaconvert-job-state-change-${var.environment}"
-  description = "Capture MediaConvert job state changes"
+  description = "Capture MediaConvert job state changes for COMPLETE and ERROR statuses, and specific bucket"
 
   event_pattern = jsonencode({
     source      = ["aws.mediaconvert"]
     detail-type = ["MediaConvert Job State Change"]
+    detail = {
+      status = ["COMPLETE", "ERROR"]
+      userMetadata = {
+        bucket = [aws_s3_bucket.raw_videos.id]
+      }
+    }
   })
 }
 
