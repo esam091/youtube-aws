@@ -1,8 +1,9 @@
 "use client";
-import { Amplify } from "aws-amplify";
+import { Amplify, } from "aws-amplify";
 // import { Authenticator } from "@aws-amplify/ui-react";
 import '@aws-amplify/ui-react/styles.css';
 import './globals.css';
+import { Toaster } from "@/components/ui/toaster";
 
 Amplify.configure({
   Auth: {
@@ -27,6 +28,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="h-screen">
         {children}
+        <Toaster />
       </body>
     </html>
   );
