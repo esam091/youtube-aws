@@ -216,7 +216,11 @@ def process_s3_object(bucket_name, object_key):
 
     response = mediaconvert_client.create_job(
         Role=MEDIACONVERT_ROLE,
-        Settings=job_settings
+        Settings=job_settings,
+        UserMetadata={
+            "id": object_key,
+            "bucket": bucket_name
+        }
     )
     
     print(f"MediaConvert job created: {response['Job']['Id']}")
