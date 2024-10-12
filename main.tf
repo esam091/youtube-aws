@@ -519,15 +519,37 @@ resource "aws_iam_role_policy" "cloudwatch_logs_access" {
 
 # DynamoDB table for videos
 resource "aws_dynamodb_table" "videos" {
-  name           = "ytaws-videos-${var.environment}"
-  billing_mode   = "PROVISIONED"
-  read_capacity  = 1
-  write_capacity = 1
-  hash_key       = "id"
+  name         = "ytaws-videos-${var.environment}"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "id"
 
   attribute {
     name = "id"
     type = "S"
+  }
+
+  attribute {
+    name = "userId"
+    type = "S"
+  }
+
+  attribute {
+    name = "status"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name               = "UserIdIndex"
+    hash_key           = "userId"
+    range_key          = "id"
+    projection_type    = "ALL"
+  }
+
+  global_secondary_index {
+    name               = "StatusIndex"
+    hash_key           = "status"
+    range_key          = "id"
+    projection_type    = "ALL"
   }
 
   tags = {

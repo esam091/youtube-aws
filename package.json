@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.x.x",
-    "@aws-sdk/client-dynamodb": "^3.x.x"
-  }
-}
