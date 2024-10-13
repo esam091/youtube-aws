@@ -35,15 +35,34 @@ def handler(event, context):
                 'body': json.dumps('Unknown MediaConvert job status')
             }
         
+        # Extract duration from HLS_GROUP output details
+        duration = None
+        for output_group in detail.get('outputGroupDetails', []):
+            if output_group.get('type') == 'HLS_GROUP':
+                for output in output_group.get('outputDetails', []):
+                    duration_ms = output.get('durationInMs')
+                    if duration_ms:
+                        duration = int(duration_ms / 1000)  # Convert to seconds and remove fractional part
+                        break
+                if duration:
+                    break
+        
         try:
+            update_expression = 'SET #status = :status'
+            expression_attribute_values = {':status': status}
+            
+            if duration is not None:
+                update_expression += ', videoDuration = :duration'
+                expression_attribute_values[':duration'] = duration
+
             response = table.update_item(
                 Key={'id': object_key},
-                UpdateExpression='SET #status = :status',
+                UpdateExpression=update_expression,
                 ExpressionAttributeNames={'#status': 'status'},
-                ExpressionAttributeValues={':status': status},
+                ExpressionAttributeValues=expression_attribute_values,
                 ReturnValues='UPDATED_NEW'
             )
-            print(f"Updated item {object_key} status to {status}")
+            print(f"Updated item {object_key} status to {status} and duration to {duration} seconds")
         except ClientError as e:
             print(f"Error updating DynamoDB: {e.response['Error']['Message']}")
 

@@ -431,6 +431,13 @@ resource "aws_elastic_beanstalk_environment" "ytaws_app_env" {
     value     = aws_dynamodb_table.videos.name
   }
 
+  # Add this new setting for S3_PROCESSED_BUCKET_URL
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "S3_PROCESSED_BUCKET_URL"
+    value     = "https://${aws_s3_bucket.processed_videos.bucket_regional_domain_name}"
+  }
+
   setting {
     namespace = "aws:elasticbeanstalk:cloudwatch:logs"
     name      = "StreamLogs"

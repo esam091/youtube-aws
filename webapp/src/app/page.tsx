@@ -1,7 +1,20 @@
+import { z } from "zod";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import VideoList from "./VideoList";
 import Link from "next/link";
+
+const videoSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string(),
+  createdAt: z.string(),
+  status: z.string(),
+});
+
+const videoArraySchema = z.array(videoSchema);
+
+type Video = z.infer<typeof videoSchema>;
 
 const dynamoDb = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoDb);
@@ -23,7 +36,14 @@ async function getVideos(lastEvaluatedKey?: { id: string; status: string }) {
   });
 
   const response = await docClient.send(command);
-  return response;
+  
+  // Validate the response
+  const validatedVideos = videoArraySchema.parse(response.Items);
+  
+  return {
+    videos: validatedVideos,
+    LastEvaluatedKey: response.LastEvaluatedKey,
+  };
 }
 
 export default async function Home({
@@ -35,7 +55,7 @@ export default async function Home({
     ? { id: searchParams.lastId, status: searchParams.lastStatus }
     : undefined;
 
-  const { Items: videos = [], LastEvaluatedKey } = await getVideos(lastEvaluatedKey);
+  const { videos, LastEvaluatedKey } = await getVideos(lastEvaluatedKey);
 
   const nextPageParams = LastEvaluatedKey
     ? `?lastId=${encodeURIComponent(LastEvaluatedKey.id)}&lastStatus=${encodeURIComponent(LastEvaluatedKey.status)}`
