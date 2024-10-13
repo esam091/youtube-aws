@@ -8,19 +8,32 @@ const s3Client = new S3Client({ region: process.env.AWS_REGION });
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
 export async function submitUploadForm({ title, description, id }: { title: string, description: string, id: string }) {
-  // We only insert into the database if the video file exists in S3
-  try {
-    await s3Client.send(new HeadObjectCommand({
-      Bucket: process.env.S3_BUCKET_NAME,
-      Key: id
-    }));
-  } catch (error) {
-    throw new Error("Video file not found in S3 bucket");
-  }
-
   const user = await currentActiveUser();
   if (!user) {
     throw new Error("User not authenticated");
+  }
+
+  // Check if the file exists and get its metadata
+  try {
+    const { Metadata } = await s3Client.send(new HeadObjectCommand({
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: id
+    }));
+
+    const s3UserId = Metadata?.['userid'];
+
+    if (!s3UserId) {
+      throw new Error("User ID metadata not found on S3 object");
+    }
+
+    if (s3UserId !== user.userId) {
+      console.log("S3 object user ID does not match current user ID. No action taken.");
+      return;
+    }
+
+  } catch (error) {
+    console.error("Error checking S3 object:", error);
+    throw new Error("Failed to verify video file in S3 bucket");
   }
 
   // Insert into VIDEOS_TABLE
