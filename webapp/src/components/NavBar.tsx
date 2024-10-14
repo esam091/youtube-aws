@@ -9,7 +9,7 @@ const NavBar = async () => {
     <nav className="bg-blue-500 p-4 shadow-md">
       <div className="container mx-auto flex justify-between items-center">
         <Link href="/" className="text-white text-xl font-bold">
-          Your App Name
+          YT AWS
         </Link>
         <div>
           {user ? (

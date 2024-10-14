@@ -36,6 +36,37 @@ resource "aws_s3_bucket" "processed_videos" {
   bucket = "ytaws-processed-videos-3892-${var.environment}"
 }
 
+# Add this new block to allow public access to the processed videos bucket
+resource "aws_s3_bucket_public_access_block" "processed_videos_public_access" {
+  bucket = aws_s3_bucket.processed_videos.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+# Add this new block to set the bucket policy for public read access
+resource "aws_s3_bucket_policy" "processed_videos_policy" {
+  bucket = aws_s3_bucket.processed_videos.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "PublicReadGetObject"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.processed_videos.arn}/*"
+      }
+    ]
+  })
+
+  # Ensure the public access block is applied before the bucket policy
+  depends_on = [aws_s3_bucket_public_access_block.processed_videos_public_access]
+}
+
 # SQS queue for raw video events
 resource "aws_sqs_queue" "raw_video_queue" {
   name = "raw-video-queue-${var.environment}"
@@ -431,11 +462,11 @@ resource "aws_elastic_beanstalk_environment" "ytaws_app_env" {
     value     = aws_dynamodb_table.videos.name
   }
 
-  # Add this new setting for S3_PROCESSED_BUCKET_URL
+  # Add this new setting for PROCESSED_BUCKET_DOMAIN
   setting {
     namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "S3_PROCESSED_BUCKET_URL"
-    value     = "https://${aws_s3_bucket.processed_videos.bucket_regional_domain_name}"
+    name      = "PROCESSED_BUCKET_DOMAIN"
+    value     = aws_s3_bucket.processed_videos.bucket_regional_domain_name
   }
 
   setting {
