@@ -8,9 +8,6 @@ table = dynamodb.Table(os.environ['DYNAMODB_TABLE'])
 sqs = boto3.client('sqs')
 s3 = boto3.client('s3')
 
-PROCESSED_BUCKET_DOMAIN = os.environ['PROCESSED_BUCKET_DOMAIN']
-processed_bucket_url = f"https://{PROCESSED_BUCKET_DOMAIN}"
-
 def handler(event, context):
     for record in event['Records']:
         message = json.loads(record['body'])

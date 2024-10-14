@@ -67,6 +67,19 @@ resource "aws_s3_bucket_policy" "processed_videos_policy" {
   depends_on = [aws_s3_bucket_public_access_block.processed_videos_public_access]
 }
 
+# New CORS configuration for processed videos bucket
+resource "aws_s3_bucket_cors_configuration" "processed_videos_cors" {
+  bucket = aws_s3_bucket.processed_videos.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET"]
+    allowed_origins = ["*"]  # This allows access from any origin
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
+
 # SQS queue for raw video events
 resource "aws_sqs_queue" "raw_video_queue" {
   name = "raw-video-queue-${var.environment}"
