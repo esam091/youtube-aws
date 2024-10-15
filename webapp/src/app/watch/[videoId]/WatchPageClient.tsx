@@ -9,7 +9,7 @@ interface WatchPageClientProps {
 }
 
 const WatchPageClient: React.FC<WatchPageClientProps> = ({ videoId, processedBucketDomain }) => {
-  const videoUrl = `https://${processedBucketDomain}/hls/${videoId}.m3u8`;
+  const videoUrl = `https://${processedBucketDomain}/${videoId}/${videoId}.m3u8`;
 
   return (
     <div className="container mx-auto px-4 py-8">

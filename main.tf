@@ -482,6 +482,13 @@ resource "aws_elastic_beanstalk_environment" "ytaws_app_env" {
     value     = aws_s3_bucket.processed_videos.bucket_regional_domain_name
   }
 
+  # Add this new setting for S3_PROCESSED_BUCKET_NAME
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "S3_PROCESSED_BUCKET_NAME"
+    value     = aws_s3_bucket.processed_videos.id
+  }
+
   setting {
     namespace = "aws:elasticbeanstalk:cloudwatch:logs"
     name      = "StreamLogs"
@@ -540,6 +547,18 @@ resource "aws_iam_role_policy" "s3_access" {
         Effect = "Allow"
         Resource = [
           "${aws_s3_bucket.raw_videos.arn}/*"
+        ]
+      },
+      {
+        Action = [
+          "s3:DeleteObject",
+          "s3:ListBucket",
+          "s3:GetObject"
+        ]
+        Effect = "Allow"
+        Resource = [
+          "${aws_s3_bucket.processed_videos.arn}",
+          "${aws_s3_bucket.processed_videos.arn}/*"
         ]
       }
     ]

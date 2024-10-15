@@ -27,7 +27,7 @@ const VideoList: React.FC<VideoListProps> = ({ videos, processedBucketDomain }) 
         <Link href={`/watch/${video.id}`} key={video.id} className="border rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
           <div className="aspect-video relative">
             <Image
-              src={`https://${processedBucketDomain}/thumbnail/${video.id}_thumbnail.0000000.jpg`}
+              src={`https://${processedBucketDomain}/${video.id}/${video.id}_thumbnail.0000000.jpg`}
               alt={video.title}
               layout="fill"
               objectFit="cover"

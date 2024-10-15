@@ -60,6 +60,9 @@ def process_s3_object(bucket_name, object_key):
     if not output_url.endswith('/'):
         output_url += '/'
     
+    # Use the object_key as the top-level folder
+    output_url += f'{object_key}/'
+    
     job_settings = {
         "Inputs": [{
             "FileInput": input_url,
@@ -78,7 +81,7 @@ def process_s3_object(bucket_name, object_key):
                 "OutputGroupSettings": {
                     "Type": "FILE_GROUP_SETTINGS",
                     "FileGroupSettings": {
-                        "Destination": f"{output_url}thumbnail/"
+                        "Destination": output_url
                     }
                 },
                 "Outputs": [{
@@ -104,7 +107,7 @@ def process_s3_object(bucket_name, object_key):
                 "OutputGroupSettings": {
                     "Type": "HLS_GROUP_SETTINGS",
                     "HlsGroupSettings": {
-                        "Destination": f"{output_url}hls/",
+                        "Destination": output_url,
                         "SegmentLength": 10,
                         "MinSegmentLength": 0,
                     }
