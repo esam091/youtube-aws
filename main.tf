@@ -5,7 +5,7 @@ provider "aws" {
 
 # S3 bucket for raw videos
 resource "aws_s3_bucket" "raw_videos" {
-  bucket = "ytaws-raw-videos-3892-${var.environment}"
+  bucket = "ytaws-raw-videos-${data.aws_caller_identity.current.account_id}-${var.environment}"
 }
 
 # CORS configuration for raw videos bucket
@@ -26,7 +26,7 @@ resource "aws_s3_bucket_cors_configuration" "raw_videos_cors" {
 
 # S3 bucket for processed videos
 resource "aws_s3_bucket" "processed_videos" {
-  bucket = "ytaws-processed-videos-3892-${var.environment}"
+  bucket = "ytaws-processed-videos-${data.aws_caller_identity.current.account_id}-${var.environment}"
 }
 
 # Add this new block to allow public access to the processed videos bucket
