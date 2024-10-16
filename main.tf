@@ -1,10 +1,3 @@
-# Add this at the beginning of the file
-variable "environment" {
-  description = "Deployment environment (dev or prod)"
-  type        = string
-  default     = "dev"
-}
-
 # Configure the AWS provider
 provider "aws" {
   region  = var.aws_region
@@ -74,7 +67,7 @@ resource "aws_s3_bucket_cors_configuration" "processed_videos_cors" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET"]
-    allowed_origins = ["*"]  # This allows access from any origin
+    allowed_origins = ["*"]
     expose_headers  = ["ETag"]
     max_age_seconds = 3000
   }
