@@ -638,7 +638,10 @@ resource "aws_iam_role_policy" "dynamodb_access" {
           "dynamodb:Scan",
           "dynamodb:Query"
         ]
-        Resource = aws_dynamodb_table.videos.arn
+        Resource = [
+          aws_dynamodb_table.videos.arn,
+          "${aws_dynamodb_table.videos.arn}/index/*"
+        ]
       }
     ]
   })
