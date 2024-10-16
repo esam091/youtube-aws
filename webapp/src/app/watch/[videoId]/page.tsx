@@ -1,5 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { CognitoIdentityProviderClient, ListUsersCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { z } from "zod";
 import { notFound } from "next/navigation";
 import WatchPageClient from "./WatchPageClient";
@@ -14,12 +15,14 @@ const videoSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string(),
+  userId: z.string(),
 });
 
-type VideoData = z.infer<typeof videoSchema>;
+type VideoData = z.infer<typeof videoSchema> & { username: string };
 
 const dynamoClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
+const cognitoClient = new CognitoIdentityProviderClient({});
 
 async function getVideoData(videoId: string): Promise<VideoData | null> {
   const command = new GetCommand({
@@ -32,7 +35,24 @@ async function getVideoData(videoId: string): Promise<VideoData | null> {
     if (!response.Item) {
       return null;
     }
-    return videoSchema.parse(response.Item);
+    const videoData = videoSchema.parse(response.Item);
+
+    // Fetch user data from Cognito using the user ID
+    const cognitoCommand = new ListUsersCommand({
+      UserPoolId: process.env.NEXT_PUBLIC_AWS_USER_POOL_ID,
+      Filter: `sub = "${videoData.userId}"`,
+      Limit: 1,
+    });
+
+    const cognitoResponse = await cognitoClient.send(cognitoCommand);
+    let username = 'Unknown User';
+    
+    if (cognitoResponse.Users?.[0]) {
+      const user = cognitoResponse.Users[0];
+      username = user.Username || 'Unknown User';
+    }
+
+    return { ...videoData, username };
   } catch (error) {
     console.error("Error fetching video data:", error);
     throw error;

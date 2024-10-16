@@ -12,6 +12,7 @@
   "dependencies": {
     "@aws-amplify/adapter-nextjs": "^1.2.21",
     "@aws-amplify/ui-react": "^6.5.2",
+    "@aws-sdk/client-cognito-identity-provider": "^3.670.0",
     "@aws-sdk/client-dynamodb": "^3.665.0",
     "@aws-sdk/client-s3": "^3.x.x",
     "@aws-sdk/lib-dynamodb": "^3.670.0",

@@ -10,6 +10,7 @@ interface WatchPageClientProps {
     id: string;
     title: string;
     description: string;
+    username: string;
   };
 }
 
@@ -21,6 +22,7 @@ const WatchPageClient: React.FC<WatchPageClientProps> = ({ videoId, processedBuc
       <h1 className="text-3xl font-bold mb-4">{videoData.title}</h1>
       <Video url={videoUrl} />
       <div className="mt-4">
+        <p>Uploaded by {videoData.username}</p>
         <h2 className="text-xl font-semibold mb-2">Description:</h2>
         <p className="text-gray-700">{videoData.description}</p>
       </div>
