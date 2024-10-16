@@ -16,7 +16,7 @@ function AuthComponent({ user }: AuthComponentProps) {
 
   useEffect(() => {
     if (user) {
-      router.refresh();
+      router.push('/');
     }
   }, [user, router]);
 
@@ -32,7 +32,7 @@ function AuthComponent({ user }: AuthComponentProps) {
 export default function Page() {
   return (
     <div className="flex justify-center items-center min-h-screen">
-      <Authenticator hideSignUp loginMechanisms={['username', 'email']}>
+      <Authenticator initialState='signUp' loginMechanisms={['username', 'email']}>
         {(props) => <AuthComponent {...props} />}
       </Authenticator>
     </div>

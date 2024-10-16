@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { currentActiveUser } from '@/server/utils';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
+import SignOutButton from '@/components/SignOutButton';
 
 const NavBar = async () => {
   const user = await currentActiveUser();
@@ -33,18 +34,18 @@ const NavBar = async () => {
           {user ? (
             <div className="flex items-baseline">
               <span className="text-white mr-4 text-xl">{user.username}</span>
-              <Button variant="link" className='text-white'>Sign Out</Button>
+              <SignOutButton />
             </div>
           ) : (
             <div>
               <Link 
-                href="/signin" 
+                href="/sign-in" 
                 className={buttonVariants({ variant: "ghost", className: "text-white mr-2 hover:bg-blue-400" })}
               >
                 Sign In
               </Link>
               <Link 
-                href="/signup" 
+                href="/sign-up" 
                 className={buttonVariants({ variant: "ghost", className: "text-white hover:bg-blue-400" })}
               >
                 Sign Up
