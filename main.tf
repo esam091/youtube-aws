@@ -828,11 +828,10 @@ resource "aws_sqs_queue_policy" "mediaconvert_job_queue_policy" {
   })
 }
 
-# Add this new resource for the IAM policy
-resource "aws_iam_policy" "cognito_list_users" {
-  name        = "cognito-list-users-policy-${var.environment}"
-  path        = "/"
-  description = "IAM policy for listing Cognito users"
+# Replace the policy attachment with an inline policy
+resource "aws_iam_role_policy" "cognito_list_users" {
+  name = "cognito-list-users-policy-${var.environment}"
+  role = aws_iam_role.eb_instance_role.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -846,10 +845,4 @@ resource "aws_iam_policy" "cognito_list_users" {
       },
     ]
   })
-}
-
-# Attach the new policy to the Elastic Beanstalk instance profile
-resource "aws_iam_role_policy_attachment" "eb_cognito_list_users" {
-  policy_arn = aws_iam_policy.cognito_list_users.arn
-  role       = aws_iam_role.eb_instance_role.name
 }
