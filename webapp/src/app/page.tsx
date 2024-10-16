@@ -7,11 +7,10 @@ import { videoSchema } from '@/lib/video';
 
 const videoArraySchema = z.array(videoSchema);
 
-
 const dynamoDb = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoDb);
 
-async function getVideos(lastEvaluatedKey?: { id: string; status: string }) {
+async function getVideos() {
   const command = new QueryCommand({
     TableName: process.env.VIDEOS_TABLE,
     IndexName: "StatusIndex",
@@ -22,9 +21,7 @@ async function getVideos(lastEvaluatedKey?: { id: string; status: string }) {
     ExpressionAttributeValues: {
       ":status": "done",
     },
-    ScanIndexForward: false, 
-    Limit: 10, 
-    ExclusiveStartKey: lastEvaluatedKey,
+    ScanIndexForward: false,
   });
 
   const response = await docClient.send(command);
@@ -32,26 +29,11 @@ async function getVideos(lastEvaluatedKey?: { id: string; status: string }) {
   // Validate the response
   const validatedVideos = videoArraySchema.parse(response.Items);
   
-  return {
-    videos: validatedVideos,
-    LastEvaluatedKey: response.LastEvaluatedKey,
-  };
+  return validatedVideos;
 }
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: { lastId?: string; lastStatus?: string };
-}) {
-  const lastEvaluatedKey = searchParams.lastId && searchParams.lastStatus
-    ? { id: searchParams.lastId, status: searchParams.lastStatus }
-    : undefined;
-
-  const { videos, LastEvaluatedKey } = await getVideos(lastEvaluatedKey);
-
-  const nextPageParams = LastEvaluatedKey
-    ? `?lastId=${encodeURIComponent(LastEvaluatedKey.id)}&lastStatus=${encodeURIComponent(LastEvaluatedKey.status)}`
-    : null;
+export default async function Home() {
+  const videos = await getVideos();
 
   return (
     <div className="container mx-auto px-4">
@@ -66,13 +48,6 @@ export default async function Home({
         videos={videos} 
         processedBucketDomain={process.env.PROCESSED_BUCKET_DOMAIN || ''}
       />
-      {nextPageParams && (
-        <div className="mt-4">
-          <Link href={`/${nextPageParams}`} className="text-blue-500 hover:underline">
-            Load More Videos
-          </Link>
-        </div>
-      )}
     </div>
   );
 }
