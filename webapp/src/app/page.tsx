@@ -7,7 +7,6 @@ import { videoSchema } from '@/lib/video';
 
 const videoArraySchema = z.array(videoSchema);
 
-type Video = z.infer<typeof videoSchema>;
 
 const dynamoDb = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoDb);

@@ -56,7 +56,7 @@ export default async function Page() {
     <div className="container mx-auto py-10">
       <h1 className="text-2xl font-bold mb-5">Manage Videos</h1>
       {videos.length === 0 ? (
-        <p>You haven't uploaded any videos yet.</p>
+        <p>You haven&apos;t uploaded any videos yet.</p>
       ) : (
         <VideoTable videos={videos} />
       )}

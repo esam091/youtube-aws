@@ -11,7 +11,7 @@ type AuthComponentProps = {
   user?: unknown; 
 };
 
-function AuthComponent({ signOut, user }: AuthComponentProps) {
+function AuthComponent({ user }: AuthComponentProps) {
   const router = useRouter();
 
   useEffect(() => {

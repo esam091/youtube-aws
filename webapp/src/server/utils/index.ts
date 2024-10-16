@@ -1,7 +1,7 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import { runWithAmplifyServerContext } from '@/amplifyServer';
-import { getCurrentUser, fetchAuthSession  } from 'aws-amplify/auth/server';
+import { getCurrentUser,  } from 'aws-amplify/auth/server';
 
 export async function currentActiveUser() {
   return runWithAmplifyServerContext({
@@ -9,7 +9,7 @@ export async function currentActiveUser() {
     operation: async (context) => {
       try {
         return await getCurrentUser(context);
-      } catch (error) {
+      } catch {
         return null;
       }
     }

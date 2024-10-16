@@ -1,36 +1,51 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import axios from 'axios';
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { createSignedUrl } from './upload-utils';
+import { createSignedUrl } from "./upload-utils";
 import { useToast } from "@/hooks/use-toast";
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { submitUploadForm } from './submit';
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { submitUploadForm } from "./submit";
 
 const formSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(50, 'Title must be 50 characters or less'),
-  description: z.string().min(1, 'Description is required').max(5000, 'Description must be 5000 characters or less'),
-  videoFile: z.instanceof(FileList)
-    .refine((files) => files.length === 1, 'Video is required')
-    .refine(
-      (files) => files[0] && files[0].type.startsWith('video/'),
-      'File must be a video'
-    )
+  title: z
+    .string()
+    .min(1, "Title is required")
+    .max(50, "Title must be 50 characters or less"),
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(5000, "Description must be 5000 characters or less"),
+  videoFile:
+    typeof window === "undefined"
+      ? z.any()
+      : z
+          .instanceof(globalThis.FileList)
+          .refine((files) => files.length === 1, "Video is required")
+          .refine(
+            (files) => files[0] && files[0].type.startsWith("video/"),
+            "File must be a video"
+          ),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 export default function AddVideoPage() {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
-    resolver: zodResolver(formSchema)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -50,20 +65,22 @@ export default function AddVideoPage() {
       });
 
       await axios.post(url, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total!);
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total!
+          );
           setUploadProgress(percentCompleted);
         },
       });
 
-      console.log('Upload successful');
+      console.log("Upload successful");
 
       // Use submitUploadForm to save video metadata
       await submitUploadForm({
         title: data.title,
         description: data.description,
-        id: id
+        id: id,
       });
 
       toast({
@@ -73,12 +90,12 @@ export default function AddVideoPage() {
       });
 
       reset();
-
     } catch (error) {
-      console.error('Error during upload or submission:', error);
+      console.error("Error during upload or submission:", error);
       toast({
         title: "Upload Failed",
-        description: "There was an error uploading or saving your video. Please try again.",
+        description:
+          "There was an error uploading or saving your video. Please try again.",
         variant: "destructive",
         duration: 5000,
       });
@@ -100,21 +117,29 @@ export default function AddVideoPage() {
               <Label htmlFor="title">Title</Label>
               <Input
                 id="title"
-                {...register('title')}
+                {...register("title")}
                 disabled={isSubmitting}
               />
-              {errors.title && <p className="text-sm text-destructive">{errors.title.message}</p>}
+              {errors.title && (
+                <p className="text-sm text-destructive">
+                  {errors.title.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                {...register('description')}
+                {...register("description")}
                 rows={5}
                 disabled={isSubmitting}
               />
-              {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
+              {errors.description && (
+                <p className="text-sm text-destructive">
+                  {errors.description.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -123,14 +148,20 @@ export default function AddVideoPage() {
                 id="videoFile"
                 type="file"
                 accept="video/*"
-                {...register('videoFile')}
+                {...register("videoFile")}
                 disabled={isSubmitting}
               />
-              {errors.videoFile && <p className="text-sm text-destructive">{errors.videoFile.message}</p>}
+              {errors.videoFile && (
+                <p className="text-sm text-destructive">
+                  {typeof errors.videoFile.message === "string"
+                    ? errors.videoFile.message
+                    : "Video is required"}
+                </p>
+              )}
             </div>
 
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Uploading...' : 'Submit'}
+              {isSubmitting ? "Uploading..." : "Submit"}
             </Button>
 
             {isSubmitting && (
