@@ -40,7 +40,7 @@ def handler(event, context):
                 resolution = get_video_resolution(bucket_name=bucket_name, object_key=object_key)
                 # print(f"Processing video: {bucket_name}/{object_key}, resolution: {resolution['width']} x {resolution['height']}")
                 # Process S3 object with MediaConvert
-                process_s3_object(bucket_name, object_key)
+                process_s3_object(bucket_name, object_key, resolution['width'], resolution['height'])
 
             # Delete the processed message from the queue
             delete_sqs_message(receipt_handle)
@@ -102,7 +102,7 @@ def get_video_resolution(bucket_name, object_key):
         print(f"Unexpected error: {e}")
         return None
 
-def process_s3_object(bucket_name, object_key):
+def process_s3_object(bucket_name, object_key, width, height):
     input_url = f's3://{bucket_name}/{object_key}'
     output_url = S3_OUTPUT_URL
     
@@ -116,8 +116,10 @@ def process_s3_object(bucket_name, object_key):
     resolution = get_video_resolution(bucket_name, object_key)
     if resolution:
         print(f"Video resolution: {resolution['width']}x{resolution['height']}")
+        original_height = resolution['height']
     else:
         print("Failed to get video resolution")
+        return  # Exit the function if we can't get the resolution
 
     job_settings = {
         "Inputs": [{
@@ -168,110 +170,56 @@ def process_s3_object(bucket_name, object_key):
                         "MinSegmentLength": 0,
                     }
                 },
-                "Outputs": [
-                    {
-                        "NameModifier": "_720p",
-                        "VideoDescription": {
-                            "Width": 1280,
-                            "Height": 720,
-                            "ScalingBehavior": "DEFAULT",
-                            "CodecSettings": {
-                                "Codec": "H_264",
-                                "H264Settings": {
-                                    "MaxBitrate": 3000000,
-                                    "RateControlMode": "QVBR",
-                                    "SceneChangeDetect": "TRANSITION_DETECTION"
-                                }
-                            }
-                        },
-                        "AudioDescriptions": [
-                            {
-                                "AudioSourceName": "Audio Selector 1",
-                                "CodecSettings": {
-                                    "Codec": "AAC",
-                                    "AacSettings": {
-                                        "Bitrate": 128000,
-                                        "CodingMode": "CODING_MODE_2_0",
-                                        "SampleRate": 48000
-                                    }
-                                }
-                            }
-                        ],
-                        "ContainerSettings": {
-                            "Container": "M3U8",
-                            "M3u8Settings": {}
-                        }
-                    },
-                    {
-                        "NameModifier": "_480p",
-                        "VideoDescription": {
-                            "Width": 854,
-                            "Height": 480,
-                            "ScalingBehavior": "DEFAULT",
-                            "CodecSettings": {
-                                "Codec": "H_264",
-                                "H264Settings": {
-                                    "MaxBitrate": 1500000,
-                                    "RateControlMode": "QVBR",
-                                    "SceneChangeDetect": "TRANSITION_DETECTION"
-                                }
-                            }
-                        },
-                        "AudioDescriptions": [
-                            {
-                                "AudioSourceName": "Audio Selector 1",
-                                "CodecSettings": {
-                                    "Codec": "AAC",
-                                    "AacSettings": {
-                                        "Bitrate": 96000,
-                                        "CodingMode": "CODING_MODE_2_0",
-                                        "SampleRate": 48000
-                                    }
-                                }
-                            }
-                        ],
-                        "ContainerSettings": {
-                            "Container": "M3U8",
-                            "M3u8Settings": {}
-                        }
-                    },
-                    {
-                        "NameModifier": "_360p",
-                        "VideoDescription": {
-                            "Width": 640,
-                            "Height": 360,
-                            "ScalingBehavior": "DEFAULT",
-                            "CodecSettings": {
-                                "Codec": "H_264",
-                                "H264Settings": {
-                                    "MaxBitrate": 1000000,
-                                    "RateControlMode": "QVBR",
-                                    "SceneChangeDetect": "TRANSITION_DETECTION"
-                                }
-                            }
-                        },
-                        "AudioDescriptions": [
-                            {
-                                "AudioSourceName": "Audio Selector 1",
-                                "CodecSettings": {
-                                    "Codec": "AAC",
-                                    "AacSettings": {
-                                        "Bitrate": 96000,
-                                        "CodingMode": "CODING_MODE_2_0",
-                                        "SampleRate": 48000
-                                    }
-                                }
-                            }
-                        ],
-                        "ContainerSettings": {
-                            "Container": "M3U8",
-                            "M3u8Settings": {}
-                        }
-                    }
-                ]
+                "Outputs": []
             }
         ]
     }
+
+    # Define output resolutions
+    output_resolutions = [
+        {"height": 720, "width": 1280, "bitrate": 3000000, "name": "720p"},
+        {"height": 480, "width": 854, "bitrate": 1500000, "name": "480p"},
+        {"height": 360, "width": 640, "bitrate": 1000000, "name": "360p"},
+        {"height": 240, "width": 426, "bitrate": 600000, "name": "240p"}
+    ]
+
+    # Add outputs for resolutions lower than or equal to the original
+    for res in output_resolutions:
+        if res["height"] <= original_height:
+            output = {
+                "NameModifier": f"_{res['name']}",
+                "VideoDescription": {
+                    "Width": res["width"],
+                    "Height": res["height"],
+                    "ScalingBehavior": "DEFAULT",
+                    "CodecSettings": {
+                        "Codec": "H_264",
+                        "H264Settings": {
+                            "MaxBitrate": res["bitrate"],
+                            "RateControlMode": "QVBR",
+                            "SceneChangeDetect": "TRANSITION_DETECTION"
+                        }
+                    }
+                },
+                "AudioDescriptions": [
+                    {
+                        "AudioSourceName": "Audio Selector 1",
+                        "CodecSettings": {
+                            "Codec": "AAC",
+                            "AacSettings": {
+                                "Bitrate": 96000,
+                                "CodingMode": "CODING_MODE_2_0",
+                                "SampleRate": 48000
+                            }
+                        }
+                    }
+                ],
+                "ContainerSettings": {
+                    "Container": "M3U8",
+                    "M3u8Settings": {}
+                }
+            }
+            job_settings["OutputGroups"][1]["Outputs"].append(output)
 
     response = mediaconvert_client.create_job(
         Role=MEDIACONVERT_ROLE,
