@@ -535,7 +535,10 @@ resource "aws_iam_role_policy" "s3_access" {
     Statement = [
       {
         Action = [
-          "s3:PutObject"
+          "s3:PutObject",
+          "s3:HeadObject",
+          "s3:ListBucket",
+          "s3:GetObject"
         ]
         Effect = "Allow"
         Resource = [
