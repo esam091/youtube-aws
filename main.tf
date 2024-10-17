@@ -117,8 +117,14 @@ resource "aws_lambda_function" "process_raw_video" {
   function_name    = "process-raw-video-${var.environment}"
   role             = aws_iam_role.lambda_role.arn
   handler          = "lambda_function.handler"
-  runtime          = "python3.10"
+  runtime          = "python3.12"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  layers = ["arn:aws:lambda:ap-southeast-1:535002893932:layer:ffmpeg-layer:2"]
+
+  // Add these two lines to set timeout and memory
+  timeout          = 10
+  memory_size      = 512
 
   environment {
     variables = {

@@ -1,6 +1,8 @@
 import json
 import boto3
 import os
+import subprocess
+from botocore.exceptions import ClientError
 
 # Initialize AWS clients
 s3_client = boto3.client('s3')
@@ -34,7 +36,9 @@ def handler(event, context):
             for s3_record in message_body['Records']:
                 bucket_name = s3_record['s3']['bucket']['name']
                 object_key = s3_record['s3']['object']['key']
-                
+
+                resolution = get_video_resolution(bucket_name=bucket_name, object_key=object_key)
+                # print(f"Processing video: {bucket_name}/{object_key}, resolution: {resolution['width']} x {resolution['height']}")
                 # Process S3 object with MediaConvert
                 process_s3_object(bucket_name, object_key)
 
@@ -53,6 +57,51 @@ def handler(event, context):
             'body': json.dumps(f'Error occurred: {str(e)}')
         }
 
+def get_video_resolution(bucket_name, object_key):
+    try:
+        # Generate a presigned URL for the S3 object
+        presigned_url = s3_client.generate_presigned_url('get_object',
+                                                         Params={'Bucket': bucket_name,
+                                                                 'Key': object_key},
+                                                         ExpiresIn=3600)
+
+        # Use ffprobe to get video information directly from the presigned URL
+        ffprobe_command = [
+            'ffprobe',
+            "-v", "quiet",
+            "-print_format", "json",
+            "-show_streams",
+            presigned_url
+        ]
+
+        result = subprocess.run(ffprobe_command, capture_output=True, text=True)
+
+        video_info = json.loads(result.stdout)
+
+        # Extract resolution from the first video stream
+        video_stream = next((stream for stream in video_info['streams'] if stream['codec_type'] == 'video'), None)
+        
+        if video_stream:
+            width = video_stream['width']
+            height = video_stream['height']
+            return {
+                "width": width,
+                "height": height
+            }
+        else:
+            print("No video stream found in the file")
+            return None
+
+    except ClientError as e:
+        print(f"Error generating presigned URL: {e}")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"Error parsing ffprobe output: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None
+
 def process_s3_object(bucket_name, object_key):
     input_url = f's3://{bucket_name}/{object_key}'
     output_url = S3_OUTPUT_URL
@@ -63,6 +112,13 @@ def process_s3_object(bucket_name, object_key):
     # Use the object_key as the top-level folder
     output_url += f'{object_key}/'
     
+    # Get video resolution
+    resolution = get_video_resolution(bucket_name, object_key)
+    if resolution:
+        print(f"Video resolution: {resolution['width']}x{resolution['height']}")
+    else:
+        print("Failed to get video resolution")
+
     job_settings = {
         "Inputs": [{
             "FileInput": input_url,
@@ -227,7 +283,6 @@ def process_s3_object(bucket_name, object_key):
     )
     
     print(f"MediaConvert job created: {response['Job']['Id']}")
-
 
 def delete_sqs_message(receipt_handle):
     sqs_client.delete_message(
