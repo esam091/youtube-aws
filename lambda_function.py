@@ -130,7 +130,8 @@ def process_s3_object(bucket_name, object_key, width, height):
                 }
             },
             "VideoSelector": {
-                "ColorSpace": "FOLLOW"
+                "ColorSpace": "FOLLOW",
+                "Rotate": "AUTO"  
             }
         }],
         "OutputGroups": [
@@ -151,7 +152,7 @@ def process_s3_object(bucket_name, object_key, width, height):
                                 "Quality": 80
                             }
                         },
-                        "Height": 100,
+                        "Height": 300,
                         "ScalingBehavior": "STRETCH_TO_OUTPUT"
                     },
                     "ContainerSettings": {
@@ -175,22 +176,22 @@ def process_s3_object(bucket_name, object_key, width, height):
         ]
     }
 
+    is_portrait = height > width
+
     # Define output resolutions
     output_resolutions = [
-        {"height": 720, "width": 1280, "bitrate": 3000000, "name": "720p"},
-        {"height": 480, "width": 854, "bitrate": 1500000, "name": "480p"},
-        {"height": 360, "width": 640, "bitrate": 1000000, "name": "360p"},
-        {"height": 240, "width": 426, "bitrate": 600000, "name": "240p"}
+        {"size": 720, "bitrate": 3000000, "name": "720p"},
+        {"size": 480, "bitrate": 1500000, "name": "480p"},
+        {"size": 360, "bitrate": 1000000, "name": "360p"},
+        {"size": 240, "bitrate": 600000, "name": "240p"}
     ]
 
     # Add outputs for resolutions lower than or equal to the original
     for res in output_resolutions:
-        if res["height"] <= original_height:
+        if (is_portrait and res["size"] <= width) or (not is_portrait and res["size"] <= height):
             output = {
                 "NameModifier": f"_{res['name']}",
                 "VideoDescription": {
-                    "Width": res["width"],
-                    "Height": res["height"],
                     "ScalingBehavior": "DEFAULT",
                     "CodecSettings": {
                         "Codec": "H_264",
@@ -199,7 +200,7 @@ def process_s3_object(bucket_name, object_key, width, height):
                             "RateControlMode": "QVBR",
                             "SceneChangeDetect": "TRANSITION_DETECTION"
                         }
-                    }
+                    },
                 },
                 "AudioDescriptions": [
                     {
@@ -219,6 +220,13 @@ def process_s3_object(bucket_name, object_key, width, height):
                     "M3u8Settings": {}
                 }
             }
+
+            # Set either Width or Height based on orientation
+            if is_portrait:
+                output["VideoDescription"]["Width"] = res["size"]
+            else:
+                output["VideoDescription"]["Height"] = res["size"]
+
             job_settings["OutputGroups"][1]["Outputs"].append(output)
 
     response = mediaconvert_client.create_job(
