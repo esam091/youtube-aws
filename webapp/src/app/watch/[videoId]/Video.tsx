@@ -11,12 +11,12 @@ const Video: React.FC<VideoProps> = ({ url }) => {
   const hlsRef = useRef<Hls | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [currentBitrate, setCurrentBitrate] = useState(0);
   const [qualities, setQualities] = useState<{ bitrate: number; height: number; }[]>([]);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const lastPlaybackTimeRef = useRef(0);
   const [error, setError] = useState<string | null>(null);
+  const [currentQuality, setCurrentQuality] = useState<string>('Auto');
 
   useEffect(() => {
     const video = videoRef.current;
@@ -34,9 +34,10 @@ const Video: React.FC<VideoProps> = ({ url }) => {
       });
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
-        const bitrate = hls.levels[data.level].bitrate;
-        console.log('Level switched', { level: data.level, bitrate });
-        setCurrentBitrate(bitrate);
+        const level = hls.levels[data.level];
+        const quality = level.height ? `${level.height}p` : 'Auto';
+        console.log('Level switched', { level: data.level, quality });
+        setCurrentQuality(quality);
       });
 
       hls.on(Hls.Events.LEVEL_LOADING, () => {
@@ -113,6 +114,10 @@ const Video: React.FC<VideoProps> = ({ url }) => {
         console.log('Changing quality', { index, currentTime: lastPlaybackTimeRef.current });
         hlsRef.current.currentLevel = index;
         
+        // Update the current quality
+        const quality = index === -1 ? 'Auto' : `${hlsRef.current.levels[index].height}p`;
+        setCurrentQuality(quality);
+
         // Force a reload of the current fragment
         hlsRef.current.loadLevel = index;
       }
@@ -156,7 +161,7 @@ const Video: React.FC<VideoProps> = ({ url }) => {
           </div>
           <div className="flex items-center space-x-4">
             <span className="text-white text-sm">
-              {(currentBitrate / 1000000).toFixed(2)} Mbps
+              {currentQuality}
             </span>
             <div className="relative">
               <button
@@ -173,7 +178,7 @@ const Video: React.FC<VideoProps> = ({ url }) => {
                       onClick={() => changeQuality(index)}
                       className="block w-full text-left text-white hover:bg-gray-700 px-2 py-1 rounded"
                     >
-                      {quality.height}p ({(quality.bitrate / 1000000).toFixed(2)} Mbps)
+                      {quality.height}p
                     </button>
                   ))}
                   <button

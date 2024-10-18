@@ -30,7 +30,8 @@ const VideoList: React.FC<VideoListProps> = ({ videos, processedBucketDomain }) 
               src={`https://${processedBucketDomain}/${video.id}/${video.id}_thumbnail.0000000.jpg`}
               alt={video.title}
               layout="fill"
-              objectFit="cover"
+              objectFit="contain"
+              className='bg-black'
             />
             <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-sm px-2 py-1 rounded">
               {formatDuration(video.videoDuration)}

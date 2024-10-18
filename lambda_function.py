@@ -109,6 +109,8 @@ def process_s3_object(bucket_name, object_key, width, height):
     if not output_url.endswith('/'):
         output_url += '/'
     
+    is_portrait = height > width
+
     # Use the object_key as the top-level folder
     output_url += f'{object_key}/'
     
@@ -152,7 +154,6 @@ def process_s3_object(bucket_name, object_key, width, height):
                                 "Quality": 80
                             }
                         },
-                        "Height": 300,
                         "ScalingBehavior": "STRETCH_TO_OUTPUT"
                     },
                     "ContainerSettings": {
@@ -176,7 +177,10 @@ def process_s3_object(bucket_name, object_key, width, height):
         ]
     }
 
-    is_portrait = height > width
+    if is_portrait:
+        job_settings["OutputGroups"][0]["Outputs"][0]["VideoDescription"]["Width"] = 300
+    else:
+        job_settings["OutputGroups"][0]["Outputs"][0]["VideoDescription"]["Height"] = 300
 
     # Define output resolutions
     output_resolutions = [
