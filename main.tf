@@ -111,6 +111,40 @@ resource "aws_sqs_queue" "raw_video_dlq" {
   name = "raw-video-queue-dlq-${var.environment}"
 }
 
+# New null_resource to download the zip file
+resource "null_resource" "download_layer" {
+  triggers = {
+    file_hash = fileexists("ffprobe-layer.zip") ? filebase64sha256("ffprobe-layer.zip") : timestamp()
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      if [ ! -f ffprobe-layer.zip ] || [ ! -s ffprobe-layer.zip ]; then
+        echo "Downloading ffprobe-layer.zip..."
+        curl -L -o ffprobe-layer.zip https://github.com/esam091/ffprobe-lambda-layer/releases/download/0.1/ffprobe-layer.zip
+        if [ $? -ne 0 ] || [ ! -s ffprobe-layer.zip ]; then
+          echo "Failed to download or empty file"
+          exit 1
+        fi
+      else
+        echo "ffprobe-layer.zip already exists and is not empty"
+      fi
+    EOT
+  }
+}
+
+# New Lambda layer resource
+resource "aws_lambda_layer_version" "ffprobe_layer" {
+  filename   = "ffprobe-layer.zip"
+  layer_name = "ytaws-ffprobe-layer"
+
+  compatible_runtimes = ["python3.12"]
+
+  source_code_hash = fileexists("ffprobe-layer.zip") ? filebase64sha256("ffprobe-layer.zip") : null
+
+  depends_on = [null_resource.download_layer]
+}
+
 # Lambda function to process raw videos
 resource "aws_lambda_function" "process_raw_video" {
   filename         = "lambda_function.zip"
@@ -120,16 +154,15 @@ resource "aws_lambda_function" "process_raw_video" {
   runtime          = "python3.12"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
-  layers = ["arn:aws:lambda:ap-southeast-1:535002893932:layer:ffmpeg-layer:2"]
+  layers = [aws_lambda_layer_version.ffprobe_layer.arn]
 
-  // Add these two lines to set timeout and memory
-  timeout          = 10
-  memory_size      = 512
+  timeout     = 10
+  memory_size = 512
 
   environment {
     variables = {
-      S3_OUTPUT_URL    = "s3://${aws_s3_bucket.processed_videos.id}"
-      SQS_QUEUE_URL    = aws_sqs_queue.raw_video_queue.url
+      S3_OUTPUT_URL     = "s3://${aws_s3_bucket.processed_videos.id}"
+      SQS_QUEUE_URL     = aws_sqs_queue.raw_video_queue.url
       MEDIACONVERT_ROLE = aws_iam_role.mediaconvert_role.arn
     }
   }
