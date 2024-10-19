@@ -451,6 +451,19 @@ resource "aws_s3_bucket" "eb_versions" {
   bucket = "ytaws-eb-${var.aws_region}-${data.aws_caller_identity.current.account_id}"
 }
 
+# Generate the .env file
+resource "local_file" "dotenv" {
+  filename = "${path.module}/webapp/.env"
+  content  = <<-EOT
+    NEXT_PUBLIC_AWS_USER_POOL_ID=${aws_cognito_user_pool.main.id}
+    NEXT_PUBLIC_AWS_USER_POOL_CLIENT_ID=${aws_cognito_user_pool_client.client.id}
+    S3_BUCKET_NAME=${aws_s3_bucket.raw_videos.id}
+    VIDEOS_TABLE=${aws_dynamodb_table.videos.name}
+    PROCESSED_BUCKET_DOMAIN=${aws_s3_bucket.processed_videos.bucket_regional_domain_name}
+    S3_PROCESSED_BUCKET_NAME=${aws_s3_bucket.processed_videos.id}
+  EOT
+}
+
 # Calculate hash of webapp directory contents, excluding node_modules and .next
 data "external" "webapp_hash" {
   program = ["bash", "-c", "find webapp -type f -not -path '*/node_modules/*' -not -path '*/.next/*' -print0 | sort -z | xargs -0 sha1sum | sha1sum | cut -d' ' -f1 | jq -R '{hash: .}'"]
@@ -471,6 +484,8 @@ resource "null_resource" "build_webapp" {
       cd ..
     EOT
   }
+
+  depends_on = [local_file.dotenv]
 }
 
 # Upload webapp.zip to S3
@@ -735,17 +750,6 @@ resource "aws_iam_role_policy" "dynamodb_access" {
     ]
   })
 }
-
-# resource "local_file" "dotenv" {
-#   filename = "${path.module}/webapp/.env"
-#   content  = <<-EOT
-#     NEXT_PUBLIC_AWS_REGION=${var.aws_region}
-#     NEXT_PUBLIC_AWS_USER_POOL_ID=${aws_cognito_user_pool.main.id}
-#     NEXT_PUBLIC_AWS_USER_POOL_CLIENT_ID=${aws_cognito_user_pool_client.client.id}
-#     S3_BUCKET_NAME=${aws_s3_bucket.raw_videos.id}
-#     VIDEOS_TABLE=${aws_dynamodb_table.videos.name}
-#   EOT
-# }
 
 terraform {
   required_providers {
