@@ -50,6 +50,7 @@ def handler(event, context):
         try:
             update_expression = 'SET #status = :status'
             expression_attribute_values = {':status': status}
+            expression_attribute_names = {'#status': 'status'}
             
             if duration is not None:
                 update_expression += ', videoDuration = :duration'
@@ -58,13 +59,17 @@ def handler(event, context):
             response = table.update_item(
                 Key={'id': object_key},
                 UpdateExpression=update_expression,
-                ExpressionAttributeNames={'#status': 'status'},
+                ConditionExpression='attribute_exists(id)',
+                ExpressionAttributeNames=expression_attribute_names,
                 ExpressionAttributeValues=expression_attribute_values,
                 ReturnValues='UPDATED_NEW'
             )
             print(f"Updated item {object_key} status to {status} and duration to {duration} seconds")
         except ClientError as e:
-            print(f"Error updating DynamoDB: {e.response['Error']['Message']}")
+            if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                print(f"Item with id {object_key} does not exist in the table")
+            else:
+                print(f"Error updating DynamoDB: {e.response['Error']['Message']}")
 
         # Remove the processed message from the queue
         sqs.delete_message(
