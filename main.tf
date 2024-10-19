@@ -446,11 +446,63 @@ resource "aws_elastic_beanstalk_application" "ytaws_app" {
   description = "YT AWS Application - ${title(var.environment)}"
 }
 
+# S3 bucket for Elastic Beanstalk versions
+resource "aws_s3_bucket" "eb_versions" {
+  bucket = "ytaws-eb-${var.aws_region}-${data.aws_caller_identity.current.account_id}"
+  force_destroy = false
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# Calculate hash of webapp directory contents, excluding node_modules and .next
+data "external" "webapp_hash" {
+  program = ["bash", "-c", "find webapp -type f -not -path '*/node_modules/*' -not -path '*/.next/*' -print0 | sort -z | xargs -0 sha1sum | sha1sum | cut -d' ' -f1 | jq -R '{hash: .}'"]
+}
+
+# Run the build script only when webapp contents change
+resource "null_resource" "build_webapp" {
+  triggers = {
+    webapp_hash = data.external.webapp_hash.result.hash
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      cd webapp
+      npm install
+      npm run zip
+      cd ..
+    EOT
+  }
+}
+
+# Upload webapp.zip to S3
+resource "aws_s3_object" "webapp_zip" {
+  bucket = aws_s3_bucket.eb_versions.id
+  key    = "ytaws-app-${var.environment}/webapp-${data.external.webapp_hash.result.hash}.zip"
+  source = "webapp.zip"
+  etag   = filemd5("webapp.zip")
+
+  depends_on = [null_resource.build_webapp]
+}
+
+# Elastic Beanstalk application version
+resource "aws_elastic_beanstalk_application_version" "default" {
+  name        = "ytaws-app-version-${data.external.webapp_hash.result.hash}"
+  application = aws_elastic_beanstalk_application.ytaws_app.name
+  description = "YT AWS Application Version - ${title(var.environment)}"
+  bucket      = aws_s3_bucket.eb_versions.id
+  key         = aws_s3_object.webapp_zip.id
+}
+
 # Elastic Beanstalk environment
 resource "aws_elastic_beanstalk_environment" "ytaws_app_env" {
   name                = "ytaws-app-${var.environment}"
   application         = aws_elastic_beanstalk_application.ytaws_app.name
   solution_stack_name = "64bit Amazon Linux 2023 v6.2.1 running Node.js 20"
+  version_label       = aws_elastic_beanstalk_application_version.default.name
 
   setting {
     namespace = "aws:autoscaling:launchconfiguration"
