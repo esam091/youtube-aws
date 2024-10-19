@@ -449,11 +449,6 @@ resource "aws_elastic_beanstalk_application" "ytaws_app" {
 # S3 bucket for Elastic Beanstalk versions
 resource "aws_s3_bucket" "eb_versions" {
   bucket = "ytaws-eb-${var.aws_region}-${data.aws_caller_identity.current.account_id}"
-  force_destroy = false
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 # Calculate hash of webapp directory contents, excluding node_modules and .next
@@ -483,7 +478,7 @@ resource "aws_s3_object" "webapp_zip" {
   bucket = aws_s3_bucket.eb_versions.id
   key    = "ytaws-app-${var.environment}/webapp-${data.external.webapp_hash.result.hash}.zip"
   source = "webapp.zip"
-  etag   = filemd5("webapp.zip")
+  etag   = data.external.webapp_hash.result.hash
 
   depends_on = [null_resource.build_webapp]
 }
