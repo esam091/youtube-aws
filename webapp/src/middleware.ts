@@ -12,8 +12,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/sign-in', request.url));
   }
 
-  // Redirect logged-in users away from /sign-in and /register
-  if ((path === '/sign-in' || path === '/register') && isLoggedIn) {
+  // Redirect logged-in users away from /sign-in and /sign-up
+  if ((path === '/sign-in' || path === '/sign-up') && isLoggedIn) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
@@ -21,5 +21,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/manage/:path*', '/sign-in', '/register'],
+  matcher: ['/manage/:path*', '/sign-in', '/sign-up'],
 };

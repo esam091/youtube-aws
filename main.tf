@@ -147,10 +147,10 @@ resource "aws_lambda_layer_version" "ffprobe_layer" {
 
 # Lambda function to process raw videos
 resource "aws_lambda_function" "process_raw_video" {
-  filename         = "lambda_function.zip"
-  function_name    = "process-raw-video-${var.environment}"
+  filename         = "process_raw_video.zip"
+  function_name    = "ytaws-process-raw-video-${var.environment}"
   role             = aws_iam_role.lambda_role.arn
-  handler          = "lambda_function.handler"
+  handler          = "process_raw_video.handler"
   runtime          = "python3.12"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
@@ -347,8 +347,8 @@ data "aws_caller_identity" "current" {}
 # Lambda function code from zip file
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_file = "lambda_function.py"
-  output_path = "lambda_function.zip"
+  source_file = "process_raw_video.py"
+  output_path = "process_raw_video.zip"
 }
 
 # Cognito User Pool
@@ -785,7 +785,7 @@ resource "aws_sqs_queue" "mediaconvert_job_dlq" {
 # Lambda function to process MediaConvert job status changes
 resource "aws_lambda_function" "process_mediaconvert_job" {
   filename         = "lambda_mediaconvert_job.zip"
-  function_name    = "process-mediaconvert-job-${var.environment}"
+  function_name    = "ytaws-process-mediaconvert-job-${var.environment}"
   role             = aws_iam_role.lambda_mediaconvert_role.arn
   handler          = "lambda_mediaconvert_job.handler"
   runtime          = "python3.12"
