@@ -103,11 +103,13 @@ export function VideoTable({ videos: initialVideos }: VideoTableProps) {
             <TableCell>{video.createdAt.toLocaleString()}</TableCell>
             <TableCell>
               <div className="flex space-x-2">
-                <Button variant="outline" asChild>
-                  <Link href={`/watch/${video.id}`} passHref>
-                    View
-                  </Link>
-                </Button>
+                {video.status === "done" && (
+                  <Button variant="outline" asChild>
+                    <Link href={`/watch/${video.id}`} passHref>
+                      View
+                    </Link>
+                  </Button>
+                )}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
