@@ -339,6 +339,7 @@ variable "aws_profile" {
 variable "aws_region" {
   description = "AWS region to deploy to"
   type        = string
+  default     = "ap-southeast-1"
 }
 
 # Get current AWS account ID
