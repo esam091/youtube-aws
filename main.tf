@@ -418,9 +418,6 @@ resource "aws_cognito_user_pool" "main" {
   user_attribute_update_settings {
     attributes_require_verification_before_update = ["email"]
   }
-
-  # Keep original attribute value active when an update is pending
-  # This is the default behavior, so we don't need to specify anything for this
 }
 
 # Cognito User Pool Client
